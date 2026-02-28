@@ -29,7 +29,7 @@ Puis Déployer → Nouveau déploiement → **Application Web**
 
 Copie l’URL du Web App (se termine par `/exec`).
 
-## 3) Configurer le front
+##  Configurer le front
 Dans `submit.js` et `overlay.js`, remplacer:
 - `API_URL = "PUT_YOUR_APPS_SCRIPT_WEBAPP_URL_HERE"`
 
