@@ -1,4 +1,4 @@
-# Viewer World Map (100% gratuit)
+# Viewer World Map Nova Tour (work in progress)
 
 Ce pack donne une solution **web** où les viewers indiquent les pays visités, et tu affiches en stream une carte :
 - **Mode A** : carte globale (communauté)
