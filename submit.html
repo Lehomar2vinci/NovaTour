@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Viewer World Map • Submit</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="h1">Indique les pays que tu as visités</div>
+      <p class="p">
+        Entre ton pseudo Twitch, choisis un pays (liste complète), puis ajoute ou retire.
+      </p>
+
+      <div class="row">
+        <div class="field">
+          <label for="pseudo">Pseudo Twitch</label>
+          <input id="pseudo" placeholder="ex: viewer123" autocomplete="off"/>
+          <div class="small">3–25 caractères, lettres/chiffres/_</div>
+        </div>
+
+        <div class="field" style="min-width:320px; flex:1;">
+          <label for="countrySearch">Pays (recherche)</label>
+          <input id="countrySearch" list="countryList" placeholder="Tape un nom, ex: France" autocomplete="off"/>
+          <datalist id="countryList"></datalist>
+          <div class="small" id="countriesMeta">Chargement de la liste des pays…</div>
+        </div>
+
+        <div class="field">
+          <label>Action</label>
+          <div class="row">
+            <button id="addBtn">Ajouter</button>
+            <button id="removeBtn" class="secondary">Retirer</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="status" class="status">Prêt.</div>
+
+      <hr style="margin:14px 0; border:0; border-top:1px solid rgba(0,0,0,0.08)"/>
+
+      <div class="small">
+        ⚙️ Tech: GitHub Pages + Google Sheets (Apps Script) + topojson/world-atlas (Natural Earth).
+      </div>
+    </div>
+  </div>
+
+  <!-- libs (free CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+
+  <script src="./submit.js"></script>
+</body>
+</html>
