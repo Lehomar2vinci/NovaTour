@@ -9,7 +9,7 @@ function getApiUrl() {
   return localStorage.getItem("api_url") || "";
 }
 
-const API_URL = getApiUrl();
+const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 const REFRESH_MS = 7000;
 
 const statsEl = document.getElementById("stats");
