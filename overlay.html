@@ -1,28 +1,21 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Viewer World Map • Overlay</title>
-  <link rel="stylesheet" href="./styles.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NovaTour - Overlay</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script defer src="overlay.js"></script>
 </head>
-<body style="background:transparent;">
-  <div class="overlay-wrap">
-    <div class="overlay-top">
-      <div class="pill" id="stats">Chargement…</div>
-      <input id="search" placeholder="pseudo (ex: viewer123)" autocomplete="off"/>
-      <div class="pill" id="userInfo">Mode: Communauté + Pseudo</div>
-    </div>
-
-    <div class="card map-card">
-      <svg id="map" viewBox="0 0 1200 620" preserveAspectRatio="xMidYMid meet"></svg>
-    </div>
+<body class="overlay">
+  <div class="hud">
+    <div class="pill" id="stats">Chargement…</div>
+    <input id="search" class="search" placeholder="pseudo (ex: viewer123)" autocomplete="off" />
+    <div class="pill muted" id="userInfo">Mode: Communauté + Pseudo</div>
   </div>
 
-  <!-- libs (free CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
-
-  <script src="./overlay.js"></script>
+  <svg id="map" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet"></svg>
 </body>
 </html>
