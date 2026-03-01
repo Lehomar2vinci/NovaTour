@@ -85,12 +85,37 @@ async function fetchState() {
   }
 }
 
+async function loadNumericToAlpha2() {
+  // TSV columns include: id (iso_n3), name, iso2, iso3 (selon version)
+  // On construit: "250" -> "FR"
+  const res = await fetch(ISO_CODES_URL, { cache: "no-store" });
+  if (!res.ok) throw new Error(`mapping TSV HTTP ${res.status}`);
+  const tsvText = await res.text();
+
+  const rows = d3.tsvParse(tsvText);
+  const map = {};
+
+  for (const r of rows) {
+    // Selon les versions, les colonnes peuvent être "id" et "iso2"
+    // id = numeric, iso2 = alpha2
+    const id = (r.id || "").trim();       // ex "250"
+    const iso2 = (r.iso2 || "").trim();   // ex "FR"
+    if (id && iso2 && /^[0-9]+$/.test(id) && /^[A-Z]{2}$/.test(iso2)) {
+      map[id] = iso2;
+    }
+  }
+
+  if (Object.keys(map).length < 200) {
+    throw new Error(`mapping TSV incomplet (${Object.keys(map).length})`);
+  }
+  return map;
+}
+
+
 async function boot() {
   try {
     setStatsText("Chargement mapping…");
-    const codes = await fetchJson(ISO_CODES_URL, "codes.json");
-    numericToAlpha2 = codes.numeric || {};
-    if (Object.keys(numericToAlpha2).length < 200) throw new Error("mapping numeric incomplet");
+    numericToAlpha2 = await loadNumericToAlpha2();
 
     setStatsText("Chargement carte…");
     const topo = await fetchJson(WORLD_ATLAS_URL, "world-atlas");
