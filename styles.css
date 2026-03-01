@@ -75,3 +75,28 @@ body.overlay {
   stroke: rgba(0,0,0,0.35);
   stroke-width: 2px;
 }
+
+/* Pin sélectionné */
+.pin.selected circle {
+  stroke: rgba(0,0,0,0.75);
+  stroke-width: 2.5;
+}
+
+/* Tooltip */
+.pinTooltipBox {
+  fill: rgba(255,255,255,0.92);
+  stroke: rgba(0,0,0,0.20);
+  stroke-width: 1;
+}
+
+.pinTooltipText {
+  fill: rgba(0,0,0,0.88);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.pinTooltipStem {
+  fill: rgba(255,255,255,0.92);
+  stroke: rgba(0,0,0,0.20);
+  stroke-width: 1;
+}
