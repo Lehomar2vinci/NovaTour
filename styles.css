@@ -1,65 +1,77 @@
 body.overlay {
   margin: 0;
+  padding: 0;
   background: transparent;
   font-family: system-ui, Arial, sans-serif;
+  overflow: hidden;
 }
 
+/* SVG plein écran */
+#map {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+/* HUD au-dessus */
 .hud {
-  position: absolute;
+  position: fixed;
   top: 16px;
   left: 16px;
   display: flex;
   gap: 10px;
   align-items: center;
   z-index: 10;
+  pointer-events: auto;
 }
 
 .pill {
-  background: rgba(255, 255, 255, 0.90);
+  background: rgba(255,255,255,0.90);
   padding: 8px 10px;
   border-radius: 999px;
   font-size: 14px;
 }
 
-.pill.muted {
-  opacity: 0.9;
-}
+.pill.muted { opacity: 0.9; }
 
 .search {
   font-size: 16px;
   padding: 10px;
   width: 260px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.92);
 }
 
+/* Pays */
 .country {
-  fill: rgba(0, 0, 0, 0.08);
-  stroke: rgba(0, 0, 0, 0.20);
-  stroke-width: 0.6;
+  fill: rgba(0,0,0,0.08);
+  stroke: rgba(0,0,0,0.22);
+  stroke-width: 0.8;
 }
 
 .visitedGlobal {
-  fill: rgba(0, 0, 0, 0.25);
+  fill: rgba(0,0,0,0.25);
 }
 
 .visitedUser {
-  stroke: rgba(0, 0, 0, 0.85);
+  stroke: rgba(0,0,0,0.85);
   stroke-width: 1.6;
 }
 
-/* Pins layer */
-#pins .pin circle {
+/* Pins */
+.pin circle {
   fill: rgba(255, 40, 40, 0.70);
-  stroke: rgba(255, 255, 255, 0.92);
+  stroke: rgba(255,255,255,0.92);
   stroke-width: 1.2;
 }
 
-#pins .pin text {
-  fill: rgba(255, 255, 255, 0.96);
+.pin text {
+  fill: rgba(255,255,255,0.96);
   font-weight: 800;
   paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.35);
+  stroke: rgba(0,0,0,0.35);
   stroke-width: 2px;
 }
