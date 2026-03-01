@@ -8,7 +8,8 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlB
 ";
 
 // CDN (si tu veux rester CDN)
-const WORLD_ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+const WORLD_ATLAS_URL = "./assets/countries-110m.json";
 const ISO_CODES_URL = "./assets/codes.json"; // DOIT exister dans ton repo
 
 const REFRESH_MS = 7000;
