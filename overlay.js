@@ -1,9 +1,16 @@
+https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec
+
+
 // =======================
 // CONFIG
 // =======================
-const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec
+";
+
+// CDN (si tu veux rester CDN)
 const WORLD_ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-const ISO_CODES_URL = "./assets/codes.json"; // mapping complet numeric -> alpha2
+const ISO_CODES_URL = "./assets/codes.json"; // DOIT exister dans ton repo
+
 const REFRESH_MS = 7000;
 
 // =======================
@@ -19,8 +26,8 @@ const userInfoEl = document.getElementById("userInfo");
 // =======================
 let state = { globalCountries: [], byUser: {}, updatedAt: 0 };
 let features = [];
-let numericToAlpha2 = {}; // "528" -> "NL" ...
-let alpha2OfFeature = new Map(); // featureIndex -> "FR"
+let numericToAlpha2 = {};          // "528" -> "NL"
+let alpha2OfFeature = new Map();   // idx -> "FR"
 
 // Projection
 const projection = d3.geoMercator();
@@ -29,34 +36,35 @@ const path = d3.geoPath(projection);
 function normalizePseudo(p) { return (p || "").trim().toLowerCase(); }
 function isValidPseudo(p) { return /^[a-z0-9_]{3,25}$/.test(p); }
 
-function setStats() {
-  const globalCount = state.globalCountries?.length || 0;
-  const userCount = Object.keys(state.byUser || {}).length;
-  statsEl.textContent = `Commune: ${globalCount} pays • ${userCount} viewers`;
+function setStatsText(t) { statsEl.textContent = t; }
+function setUserInfo(pseudo) {
+  if (!pseudo) userInfoEl.textContent = "Mode: Communauté + Pseudo";
+  else userInfoEl.textContent = `Pseudo: ${pseudo}`;
 }
 
-function setUserInfo(pseudo) {
-  if (!pseudo) {
-    userInfoEl.textContent = "Mode: Communauté + Pseudo";
-    return;
+async function safeFetchJson(url, label) {
+  setStatsText(`Chargement: ${label}…`);
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`${label} HTTP ${res.status} (${url})`);
   }
-  const arr = state.byUser?.[pseudo] || [];
-  userInfoEl.textContent = `Pseudo: ${pseudo} • ${arr.length} pays`;
+  return await res.json();
 }
 
 async function fetchState() {
   try {
-    const res = await fetch(`${API_URL}?route=state`, { cache: "no-store" });
-    const data = await res.json();
+    const data = await safeFetchJson(`${API_URL}?route=state`, "API state");
     if (data?.ok) {
       state = data;
-      setStats();
       paint();
+      const globalCount = state.globalCountries?.length || 0;
+      const userCount = Object.keys(state.byUser || {}).length;
+      setStatsText(`OK • ${globalCount} pays • ${userCount} viewers`);
     } else {
-      statsEl.textContent = "Erreur API state.";
+      setStatsText("API state: ok=false");
     }
   } catch (e) {
-    statsEl.textContent = "Erreur réseau / API_URL.";
+    setStatsText(`API ERROR: ${e.message}`);
     console.error(e);
   }
 }
@@ -77,68 +85,60 @@ function fitProjectionToFeatures() {
 }
 
 function paint() {
-  // Sets
   const globalSet = new Set((state.globalCountries || []).map(s => String(s).toUpperCase()));
+
   const pseudo = normalizePseudo(searchEl.value);
-  const userSet = new Set(
-    (isValidPseudo(pseudo) ? (state.byUser?.[pseudo] || []) : []).map(s => String(s).toUpperCase())
-  );
+  const userCountries = (isValidPseudo(pseudo) ? (state.byUser?.[pseudo] || []) : []);
+  const userSet = new Set(userCountries.map(s => String(s).toUpperCase()));
 
   setUserInfo(isValidPseudo(pseudo) ? pseudo : "");
 
-  // Reset classes by data-driven approach
   svg.selectAll("path.country")
-    .classed("visitedGlobal", (d) => globalSet.has(alpha2OfFeature.get(d.__idx) || ""))
-    .classed("visitedUser", (d) => userSet.has(alpha2OfFeature.get(d.__idx) || ""));
-}
-
-async function loadMapping() {
-  // codes.json contient des maps alpha2/alpha3/numeric
-  // On veut numeric -> alpha2
-  const codes = await fetch(ISO_CODES_URL, { cache: "no-store" }).then(r => r.json());
-  // Structure de codes.json: { alpha2: {...}, alpha3: {...}, numeric: {...} }
-  numericToAlpha2 = codes.numeric || {};
-}
-
-async function loadMap() {
-  const topo = await fetch(WORLD_ATLAS_URL).then(r => r.json());
-  features = topojson.feature(topo, topo.objects.countries).features;
-
-  // Fit projection before drawing
-  fitProjectionToFeatures();
-
-  // Enrich features with an index and alpha2 (via numeric id)
-  features.forEach((f, i) => {
-    f.__idx = i;
-    const numeric = String(f.id);       // ex "528"
-    const a2 = numericToAlpha2[numeric]; // ex "NL"
-    alpha2OfFeature.set(i, a2 || "");
-  });
-
-  svg.append("g")
-    .attr("id", "countries")
-    .selectAll("path")
-    .data(features)
-    .join("path")
-    .attr("class", "country")
-    .attr("d", d => path(d));
-
-  // Premier rendu (avant state)
-  paint();
+    .classed("visitedGlobal", d => globalSet.has(alpha2OfFeature.get(d.__idx) || ""))
+    .classed("visitedUser",   d => userSet.has(alpha2OfFeature.get(d.__idx) || ""));
 }
 
 async function boot() {
   try {
-    // Si ce fichier manque → overlay “vide”
-    await loadMapping();
-    await loadMap();
+    // 1) Vérifier mapping
+    const codes = await safeFetchJson(ISO_CODES_URL, "codes.json");
+    numericToAlpha2 = codes.numeric || {};
+    if (!numericToAlpha2 || Object.keys(numericToAlpha2).length < 200) {
+      throw new Error("codes.json chargé mais mapping numeric incomplet");
+    }
+
+    // 2) Charger carte topojson
+    const topo = await safeFetchJson(WORLD_ATLAS_URL, "world-atlas");
+    features = topojson.feature(topo, topo.objects.countries).features;
+
+    // 3) Ajuster projection
+    fitProjectionToFeatures();
+
+    // 4) Enrichir + dessiner
+    features.forEach((f, i) => {
+      f.__idx = i;
+      const numeric = String(f.id);
+      const a2 = numericToAlpha2[numeric]; // "FR"
+      alpha2OfFeature.set(i, a2 || "");
+    });
+
+    svg.selectAll("*").remove();
+    svg.append("g")
+      .attr("id", "countries")
+      .selectAll("path")
+      .data(features)
+      .join("path")
+      .attr("class", "country")
+      .attr("d", d => path(d));
+
+    paint();
+
+    // 5) API state
     await fetchState();
     setInterval(fetchState, REFRESH_MS);
 
-    statsEl.textContent = "OK";
-    setStats();
   } catch (e) {
-    statsEl.textContent = "Erreur chargement (console).";
+    setStatsText(`LOAD ERROR: ${e.message}`);
     console.error(e);
   }
 }
