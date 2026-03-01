@@ -4,7 +4,7 @@
 // =======================
 const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 const WORLD_ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-const ISO_CODES_URL = "./assets/codes.json";
+const ISO_CODES_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/country-names.tsv";
 const REFRESH_MS = 7000;
 
 const svg = d3.select("#map");
