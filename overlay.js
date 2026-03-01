@@ -11,11 +11,15 @@ const statsEl = document.getElementById("stats");
 const searchEl = document.getElementById("search");
 const userInfoEl = document.getElementById("userInfo");
 
-let state = { globalCountries: [], byUser: {}, pinsByCountry: {}, updatedAt: 0 };
+let state = { globalCountries: [], byUser: {}, pinsByCountry: {}, recentPins: [], updatedAt: 0 };
 let features = [];
 
 const projection = d3.geoMercator();
 const path = d3.geoPath(projection);
+
+// Scene group: tout ce qui doit zoomer/panner ensemble
+let scene, countriesLayer, pinsLayer, tooltipLayer;
+let selectedPinId = null;
 
 function normalizePseudo(p) { return (p || "").trim().toLowerCase(); }
 function isValidPseudo(p) { return /^[a-z0-9_]{3,25}$/.test(p); }
@@ -27,9 +31,6 @@ async function fetchJson(url, label) {
   return await res.json();
 }
 
-// Scene group: tout ce qui doit zoomer/panner ensemble
-let scene, countriesLayer, pinsLayer;
-
 function getSvgSize() {
   const el = svg.node();
   const r = el.getBoundingClientRect();
@@ -40,10 +41,26 @@ function fitProjection() {
   const { w, h } = getSvgSize();
   const fc = { type: "FeatureCollection", features };
   projection.fitSize([w, h], fc);
-  // Recalcul des d (chemins)
+
+  // Recalcul des chemins
   countriesLayer.selectAll("path.country").attr("d", d => path(d));
-  // Repositionne pins
+  // Repositionne pins + tooltip
   paintPins();
+  paintTooltip();
+}
+
+function buildPinLabelMap() {
+  // dernier label non-vide par pays (d'après recentPins)
+  const map = {};
+  const arr = state.recentPins || [];
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const p = arr[i];
+    const id = String(p.country || "");
+    const label = String(p.label || "").trim();
+    if (!id) continue;
+    if (label && map[id] == null) map[id] = label;
+  }
+  return map;
 }
 
 function paintCountries() {
@@ -66,6 +83,7 @@ function paintPins() {
   if (!pinsLayer) return;
 
   const pinsByCountry = state.pinsByCountry || {};
+  const labelMap = buildPinLabelMap();
   const entries = Object.entries(pinsByCountry); // [ [id, count], ... ]
   const byId = new Map(features.map(f => [String(f.id), f]));
 
@@ -76,19 +94,36 @@ function paintPins() {
       const c = d3.geoCentroid(f);
       const xy = projection(c);
       if (!xy || !isFinite(xy[0]) || !isFinite(xy[1])) return null;
-      return { id: String(id), count: Number(count) || 0, x: xy[0], y: xy[1] };
+      return {
+        id: String(id),
+        count: Number(count) || 0,
+        x: xy[0],
+        y: xy[1],
+        label: labelMap[String(id)] || ""  // dernier label connu
+      };
     })
     .filter(Boolean);
 
   const sel = pinsLayer.selectAll("g.pin")
     .data(pinsData, d => d.id);
 
-  const enter = sel.enter().append("g").attr("class", "pin");
+  const enter = sel.enter().append("g")
+    .attr("class", "pin")
+    .style("cursor", "pointer")
+    .on("click", (event, d) => {
+      event.stopPropagation();
+      selectedPinId = (selectedPinId === d.id) ? null : d.id;
+      paintTooltip();
+      // met à jour classe selected
+      pinsLayer.selectAll("g.pin").classed("selected", p => p.id === selectedPinId);
+    });
+
   enter.append("circle");
   enter.append("text")
     .attr("text-anchor", "middle")
     .attr("dy", 4)
-    .style("font-size", "10px");
+    .style("font-size", "10px")
+    .style("pointer-events", "none");
 
   sel.merge(enter)
     .attr("transform", d => `translate(${d.x},${d.y})`);
@@ -100,11 +135,80 @@ function paintPins() {
     .text(d => d.count >= 2 ? String(d.count) : "");
 
   sel.exit().remove();
+
+  // Maj selected class après refresh
+  pinsLayer.selectAll("g.pin").classed("selected", p => p.id === selectedPinId);
+}
+
+function paintTooltip() {
+  if (!tooltipLayer) return;
+  tooltipLayer.selectAll("*").remove();
+
+  if (!selectedPinId) return;
+
+  const pinsByCountry = state.pinsByCountry || {};
+  const count = Number(pinsByCountry[selectedPinId] || 0);
+
+  // retrouver pin data courant (position + label)
+  const pinNode = pinsLayer.selectAll("g.pin").filter(d => d.id === selectedPinId);
+  const d = pinNode.datum();
+  if (!d) return;
+
+  const label = (d.label || "").trim();
+  const text = label ? label : `Pays ${selectedPinId}`;
+
+  // Tooltip group
+  const g = tooltipLayer.append("g")
+    .attr("class", "pinTooltip")
+    .attr("transform", `translate(${d.x},${d.y})`);
+
+  // Layout simple
+  const paddingX = 10;
+  const paddingY = 8;
+
+  const lines = [
+    text,
+    count ? `Pins: ${count}` : ""
+  ].filter(Boolean);
+
+  const textSel = g.append("text")
+    .attr("class", "pinTooltipText")
+    .attr("x", 0)
+    .attr("y", 0);
+
+  lines.forEach((line, i) => {
+    textSel.append("tspan")
+      .attr("x", 0)
+      .attr("dy", i === 0 ? 0 : 16)
+      .text(line);
+  });
+
+  // Mesure bbox pour fond
+  const bbox = textSel.node().getBBox();
+
+  // fond + bord
+  g.insert("rect", "text")
+    .attr("class", "pinTooltipBox")
+    .attr("x", bbox.x - paddingX)
+    .attr("y", bbox.y - paddingY)
+    .attr("width", bbox.width + paddingX * 2)
+    .attr("height", bbox.height + paddingY * 2)
+    .attr("rx", 10)
+    .attr("ry", 10);
+
+  // petit “trait” vers le pin
+  g.append("path")
+    .attr("class", "pinTooltipStem")
+    .attr("d", `M 0 ${bbox.y + bbox.height + paddingY} L -8 ${bbox.y + bbox.height + paddingY + 10} L 8 ${bbox.y + bbox.height + paddingY + 10} Z`);
+
+  // Positionne tooltip au-dessus du pin
+  g.attr("transform", `translate(${d.x},${d.y}) translate(0, -18) translate(${-bbox.width/2}, ${-bbox.height - 26})`);
 }
 
 function paint() {
   paintCountries();
   paintPins();
+  paintTooltip();
 }
 
 async function fetchState() {
@@ -133,10 +237,7 @@ function enableZoom() {
       scene.attr("transform", event.transform);
     });
 
-  // Appliquer zoom sur le SVG (molette + drag)
   svg.call(zoom);
-
-  // Double-clic zoom désactivé (optionnel)
   svg.on("dblclick.zoom", null);
 }
 
@@ -144,41 +245,42 @@ async function boot() {
   try {
     setStatsText("Chargement carte…");
 
-    // Prépare SVG (important pour fitSize)
     const { w, h } = getSvgSize();
     svg.attr("viewBox", `0 0 ${w} ${h}`);
 
-    // Charger topojson
     const topo = await fetchJson(WORLD_ATLAS_URL, "world-atlas");
     features = topojson.feature(topo, topo.objects.countries).features;
 
-    // Nettoyage + layers
     svg.selectAll("*").remove();
+
     scene = svg.append("g").attr("id", "scene");
     countriesLayer = scene.append("g").attr("id", "countries");
     pinsLayer = scene.append("g").attr("id", "pins");
+    tooltipLayer = scene.append("g").attr("id", "tooltips");
 
-    // Fit projection au vrai viewport
     fitProjection();
 
-    // Dessin pays
     countriesLayer.selectAll("path")
       .data(features)
       .join("path")
       .attr("class", "country")
       .attr("d", d => path(d));
 
-    // Zoom/pan
+    // click anywhere -> close tooltip
+    svg.on("click", () => {
+      selectedPinId = null;
+      pinsLayer.selectAll("g.pin").classed("selected", false);
+      paintTooltip();
+    });
+
     enableZoom();
 
-    // Initial paint + boucle API
     paint();
     setStatsText("Carte OK, lecture API…");
 
     await fetchState();
     setInterval(fetchState, REFRESH_MS);
 
-    // Refit au resize
     window.addEventListener("resize", () => {
       const { w, h } = getSvgSize();
       svg.attr("viewBox", `0 0 ${w} ${h}`);
