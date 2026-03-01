@@ -10,7 +10,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlB
 // CDN (si tu veux rester CDN)
 
 const WORLD_ATLAS_URL = "./assets/countries-110m.json";
-const ISO_CODES_URL = "./assets/codes.json"; // DOIT exister dans ton repo
+const ISO_CODES_URL = "https://unpkg.com/i18n-iso-countries@7.14.0/codes.json";
 
 const REFRESH_MS = 7000;
 
