@@ -140,54 +140,85 @@ function paintPins() {
   pinsLayer.selectAll("g.pin").classed("selected", p => p.id === selectedPinId);
 }
 
+function formatShortDate(iso) {
+  // ISO string -> "DD/MM HH:MM" (simple)
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm} ${hh}:${mi}`;
+}
+
 function paintTooltip() {
   if (!tooltipLayer) return;
   tooltipLayer.selectAll("*").remove();
-
   if (!selectedPinId) return;
 
-  const pinsByCountry = state.pinsByCountry || {};
-  const count = Number(pinsByCountry[selectedPinId] || 0);
-
-  // retrouver pin data courant (position + label)
+  // Données pin courantes (position)
   const pinNode = pinsLayer.selectAll("g.pin").filter(d => d.id === selectedPinId);
   const d = pinNode.datum();
   if (!d) return;
 
-  const label = (d.label || "").trim();
-  const text = label ? label : `Pays ${selectedPinId}`;
+  const count = Number(state.pinsByCountry?.[selectedPinId] || 0);
+
+  // Liste complète (cap 50 par pays) renvoyée par l’API
+  const fullList = (state.pinsFullByCountry && state.pinsFullByCountry[selectedPinId])
+    ? state.pinsFullByCountry[selectedPinId]
+    : [];
 
   // Tooltip group
   const g = tooltipLayer.append("g")
     .attr("class", "pinTooltip")
     .attr("transform", `translate(${d.x},${d.y})`);
 
-  // Layout simple
-  const paddingX = 10;
-  const paddingY = 8;
-
-  const lines = [
-    text,
-    count ? `Pins: ${count}` : ""
-  ].filter(Boolean);
-
-  const textSel = g.append("text")
+  // Titre
+  const title = `Pays ${selectedPinId} • ${count} pin(s)`;
+  const header = g.append("text")
     .attr("class", "pinTooltipText")
     .attr("x", 0)
     .attr("y", 0);
 
+  header.append("tspan").attr("x", 0).attr("dy", 0).text(title);
+
+  // Liste (labels)
+  const maxShow = Math.min(12, fullList.length); // on affiche 12 dans le tooltip
+  const lines = [];
+
+  for (let i = 0; i < maxShow; i++) {
+    const p = fullList[i]; // déjà “du plus récent au plus ancien”
+    const label = String(p.label || "").trim();
+    const pseudo = String(p.pseudo || "").trim();
+    const dt = formatShortDate(p.t || "");
+    const line = label
+      ? `• ${label} — ${pseudo}${dt ? " (" + dt + ")" : ""}`
+      : `• (sans label) — ${pseudo}${dt ? " (" + dt + ")" : ""}`;
+    lines.push(line);
+  }
+
+  if (fullList.length > maxShow) {
+    lines.push(`… +${fullList.length - maxShow} autre(s)`);
+  }
+
+  const body = g.append("text")
+    .attr("class", "pinTooltipSmall")
+    .attr("x", 0)
+    .attr("y", 0);
+
   lines.forEach((line, i) => {
-    textSel.append("tspan")
+    body.append("tspan")
       .attr("x", 0)
-      .attr("dy", i === 0 ? 0 : 16)
+      .attr("dy", i === 0 ? 18 : 16)
       .text(line);
   });
 
-  // Mesure bbox pour fond
-  const bbox = textSel.node().getBBox();
+  // Mesure bbox du groupe texte (header + body)
+  const bbox = g.node().getBBox();
+  const paddingX = 12;
+  const paddingY = 10;
 
-  // fond + bord
-  g.insert("rect", "text")
+  g.insert("rect", ":first-child")
     .attr("class", "pinTooltipBox")
     .attr("x", bbox.x - paddingX)
     .attr("y", bbox.y - paddingY)
@@ -196,13 +227,15 @@ function paintTooltip() {
     .attr("rx", 10)
     .attr("ry", 10);
 
-  // petit “trait” vers le pin
+  // petit “stem”
   g.append("path")
     .attr("class", "pinTooltipStem")
     .attr("d", `M 0 ${bbox.y + bbox.height + paddingY} L -8 ${bbox.y + bbox.height + paddingY + 10} L 8 ${bbox.y + bbox.height + paddingY + 10} Z`);
 
-  // Positionne tooltip au-dessus du pin
-  g.attr("transform", `translate(${d.x},${d.y}) translate(0, -18) translate(${-bbox.width/2}, ${-bbox.height - 26})`);
+  // Place tooltip au-dessus du pin, centré
+  const xShift = -bbox.width / 2;
+  const yShift = -bbox.height - 28;
+  g.attr("transform", `translate(${d.x},${d.y}) translate(${xShift}, ${yShift})`);
 }
 
 function paint() {
