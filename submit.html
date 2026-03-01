@@ -1,253 +1,277 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NovaTour — Pays visités</title>
   <style>
-    :root{
-      --bg:#0b0f17;
-      --panel:rgba(255,255,255,0.06);
-      --panel2:rgba(255,255,255,0.10);
-      --text:rgba(255,255,255,0.92);
-      --muted:rgba(255,255,255,0.65);
-      --border:rgba(255,255,255,0.14);
-      --ok:rgba(70, 255, 140, 0.18);
-      --err:rgba(255, 95, 95, 0.18);
-      --shadow:0 10px 30px rgba(0,0,0,0.35);
-      --radius:16px;
+    :root {
+      --bg: #0b0f17;
+      --panel: rgba(255, 255, 255, 0.06);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.65);
+      --border: rgba(255, 255, 255, 0.14);
+      --ok: rgba(70, 255, 140, 0.18);
+      --err: rgba(255, 95, 95, 0.18);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --radius: 16px;
     }
 
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background: radial-gradient(1000px 600px at 20% 10%, rgba(76,144,255,0.25), transparent 55%),
-                  radial-gradient(900px 500px at 85% 20%, rgba(0,255,170,0.18), transparent 55%),
-                  var(--bg);
-      color:var(--text);
-      min-height:100vh;
+    * {
+      box-sizing: border-box
     }
 
-    .wrap{
-      max-width:980px;
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1000px 600px at 20% 10%, rgba(76, 144, 255, 0.25), transparent 55%),
+        radial-gradient(900px 500px at 85% 20%, rgba(0, 255, 170, 0.18), transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 980px;
       margin: 28px auto;
-      padding: 0 16px 28px;
+      padding: 0 16px 28px
     }
 
-    header{
-      display:flex;
-      gap:16px;
-      align-items:flex-start;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      margin-bottom: 16px;
+    header {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 16px
     }
 
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 6px
     }
 
-    h1{
-      margin:0;
-      font-size:22px;
-      letter-spacing:0.2px;
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: .2px
     }
 
-    .sub{
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.4;
-      max-width: 70ch;
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 70ch
     }
 
-    .card{
+    .card {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      overflow:hidden;
+      overflow: hidden
     }
 
-    .cardHead{
+    .cardHead {
       padding: 14px 16px;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.07), transparent);
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.07), transparent);
       border-bottom: 1px solid var(--border);
-      display:flex;
-      gap:12px;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap
     }
 
-    .badge{
-      font-size:12px;
-      color:var(--muted);
+    .badge {
+      font-size: 12px;
+      color: var(--muted);
       padding: 6px 10px;
       border: 1px solid var(--border);
-      border-radius:999px;
-      background: rgba(255,255,255,0.05);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05)
     }
 
-    .grid{
-      display:grid;
+    .grid {
+      display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 14px;
-      padding: 16px;
+      padding: 16px
     }
 
-    @media (max-width: 860px){
-      .grid{ grid-template-columns:1fr; }
+    @media (max-width:860px) {
+      .grid {
+        grid-template-columns: 1fr
+      }
     }
 
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px
     }
 
-    label{
-      font-size:13px;
-      color:var(--muted);
+    label {
+      font-size: 13px;
+      color: var(--muted)
     }
 
-    input, select, button{
+    input,
+    select,
+    button {
       font: inherit;
-      color:var(--text);
+      color: var(--text)
     }
 
-    input{
-      background: rgba(255,255,255,0.06);
+    input {
+      background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px 12px;
-      outline:none;
-    }
-    input:focus{
-      border-color: rgba(120,170,255,0.55);
-      box-shadow: 0 0 0 4px rgba(120,170,255,0.18);
+      padding: 12px;
+      outline: none
     }
 
-    .hint{
-      font-size:12px;
-      color:var(--muted);
+    input:focus {
+      border-color: rgba(120, 170, 255, 0.55);
+      box-shadow: 0 0 0 4px rgba(120, 170, 255, 0.18)
     }
 
-    .countryBox{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
+    .hint {
+      font-size: 12px;
+      color: var(--muted)
     }
 
-    .countryTop{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:space-between;
+    .countryBox {
+      display: flex;
+      flex-direction: column;
+      gap: 10px
     }
 
-    .searchRow{
+    .countryTop {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .searchRow {
       flex: 1;
       min-width: 240px;
-      display:flex;
-      gap:10px;
-      align-items:center;
+      display: flex;
+      gap: 10px;
+      align-items: center
     }
 
-    .searchRow input{
-      width:100%;
+    .searchRow input {
+      width: 100%
     }
 
-    select{
-      width:100%;
+    select {
+      width: 100%;
       min-height: 320px;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 10px;
-      outline:none;
+      outline: none
     }
 
-    .actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      margin-top: 6px;
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      margin-top: 6px
     }
 
-    button{
+    button {
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.08);
       padding: 11px 14px;
       border-radius: 12px;
-      cursor:pointer;
-      transition: transform .04s ease, background .15s ease;
-      user-select:none;
+      cursor: pointer;
+      transition: transform .04s ease, background .15s ease
     }
-    button:hover{ background: rgba(255,255,255,0.12); }
-    button:active{ transform: translateY(1px); }
 
-    .primary{
-      background: rgba(120,170,255,0.20);
-      border-color: rgba(120,170,255,0.35);
+    button:hover {
+      background: rgba(255, 255, 255, 0.12)
     }
-    .primary:hover{ background: rgba(120,170,255,0.26); }
 
-    .danger{
-      background: rgba(255,95,95,0.16);
-      border-color: rgba(255,95,95,0.35);
+    button:active {
+      transform: translateY(1px)
     }
-    .danger:hover{ background: rgba(255,95,95,0.22); }
 
-    .status{
+    .primary {
+      background: rgba(120, 170, 255, 0.20);
+      border-color: rgba(120, 170, 255, 0.35)
+    }
+
+    .primary:hover {
+      background: rgba(120, 170, 255, 0.26)
+    }
+
+    .danger {
+      background: rgba(255, 95, 95, 0.16);
+      border-color: rgba(255, 95, 95, 0.35)
+    }
+
+    .danger:hover {
+      background: rgba(255, 95, 95, 0.22)
+    }
+
+    .status {
       margin: 14px 16px 16px;
-      padding: 12px 12px;
+      padding: 12px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.05);
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-    }
-    .status.ok{
-      background: var(--ok);
-      color: rgba(210,255,230,0.95);
-      border-color: rgba(70,255,140,0.25);
-    }
-    .status.err{
-      background: var(--err);
-      color: rgba(255,220,220,0.95);
-      border-color: rgba(255,95,95,0.28);
+      font-size: 13px
     }
 
-    .footer{
+    .status.ok {
+      background: var(--ok);
+      color: rgba(210, 255, 230, 0.95);
+      border-color: rgba(70, 255, 140, 0.25)
+    }
+
+    .status.err {
+      background: var(--err);
+      color: rgba(255, 220, 220, 0.95);
+      border-color: rgba(255, 95, 95, 0.28)
+    }
+
+    .footer {
       margin-top: 12px;
       color: var(--muted);
       font-size: 12px;
-      padding: 0 6px;
+      padding: 0 6px
     }
-    .kbd{
+
+    .kbd {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size: 11px;
       padding: 2px 6px;
       border-radius: 8px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.82);
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.82)
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <header>
       <div class="title">
         <h1>NovaTour — Pays visités</h1>
         <div class="sub">
-          Entre ton pseudo Twitch, cherche un pays, puis clique <span class="kbd">Ajouter</span> ou <span class="kbd">Retirer</span>.
+          Entre ton pseudo Twitch, cherche un pays, puis clique <span class="kbd">Ajouter</span> ou <span
+            class="kbd">Retirer</span>.
           Les mises à jour apparaissent sur la carte du stream (overlay).
         </div>
       </div>
@@ -261,32 +285,29 @@
       </div>
 
       <div class="grid">
-        <!-- PSEUDO -->
         <div class="field">
           <label for="pseudo">Pseudo Twitch</label>
-          <input id="pseudo" placeholder="ex: viewer123" autocomplete="off" inputmode="text" />
-          <div class="hint">3–25 caractères, lettres/chiffres/underscore. (Ex: <span class="kbd">viewer_123</span>)</div>
+          <input id="pseudo" placeholder="ex: viewer123" autocomplete="off" />
+          <div class="hint">3–25 caractères, lettres/chiffres/underscore.</div>
         </div>
 
-        <!-- AIDE / INFOS -->
         <div class="field">
           <label>Comment ça marche ?</label>
-          <div class="hint" style="padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.04);line-height:1.5;">
-            • Tu sélectionnes un pays dans la liste.<br/>
-            • On enregistre ton choix dans une base Google Sheet.<br/>
-            • L’overlay stream met la carte à jour automatiquement.<br/>
-            <span style="opacity:.9;">(Si les contributions sont fermées, tu verras “LOCKED”.)</span>
+          <div class="hint"
+            style="padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.04);line-height:1.5;">
+            • Tu sélectionnes un pays dans la liste.<br />
+            • On enregistre ton choix dans une base Google Sheet.<br />
+            • L’overlay stream met la carte à jour automatiquement.<br />
+            • Si c’est fermé : tu verras <span class="kbd">LOCKED</span>.
           </div>
         </div>
 
-        <!-- PAYS -->
-        <div class="field" style="grid-column: 1 / -1;">
+        <div class="field" style="grid-column:1/-1;">
           <label for="countrySelect">Pays</label>
-
           <div class="countryBox">
             <div class="countryTop">
               <div class="searchRow">
-                <input id="q" placeholder="Rechercher un pays (nom ou ID)..." autocomplete="off" />
+                <input id="q" placeholder="Rechercher un pays (nom / ISO / ID)..." autocomplete="off" />
               </div>
               <div class="actions">
                 <button id="addBtn" class="primary" type="button">Ajouter</button>
@@ -294,12 +315,9 @@
               </div>
             </div>
 
-            <select id="countrySelect" size="12" aria-label="Liste des pays"></select>
-
-            <div class="hint">
-              Sélectionne un pays, puis clique sur Ajouter/Retirer.
-              (La liste est filtrée par ta recherche.)
-            </div>
+            <select id="countrySelect" size="12"></select>
+            <div class="hint">Sélectionne un pays, puis clique Ajouter/Retirer. Entrée = Ajouter, Shift+Entrée =
+              Retirer.</div>
           </div>
         </div>
       </div>
@@ -308,11 +326,12 @@
     </div>
 
     <div class="footer">
-      Si tu as un message <span class="kbd">RATE_LIMIT</span>, attends quelques secondes et réessaie.
-      Si tu vois <span class="kbd">LOCKED</span>, les contributions sont momentanément fermées par le streamer.
+      Si tu as <span class="kbd">RATE_LIMIT</span>, attends quelques secondes.
+      Si tu as <span class="kbd">LOCKED</span>, le streamer a fermé les contributions.
     </div>
   </div>
 
   <script src="submit.js" defer></script>
 </body>
+
 </html>

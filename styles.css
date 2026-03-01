@@ -15,7 +15,7 @@ body.overlay {
 }
 
 .pill {
-  background: rgba(255,255,255,0.88);
+  background: rgba(255,255,255,0.90);
   padding: 8px 10px;
   border-radius: 999px;
   font-size: 14px;
@@ -30,7 +30,7 @@ body.overlay {
   padding: 10px;
   width: 260px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.15);
+  border: 1px solid rgba(0,0,0,0.18);
   background: rgba(255,255,255,0.92);
 }
 

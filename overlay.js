@@ -1,10 +1,6 @@
-
-// =======================
-// CONFIG
-// =======================
-const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
-
-const WORLD_ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+const API_URL ="https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
+const WORLD_ATLAS_URL =
+  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const REFRESH_MS = 7000;
 
 const svg = d3.select("#map");
@@ -18,9 +14,15 @@ let features = [];
 const projection = d3.geoMercator();
 const path = d3.geoPath(projection);
 
-function normalizePseudo(p) { return (p || "").trim().toLowerCase(); }
-function isValidPseudo(p) { return /^[a-z0-9_]{3,25}$/.test(p); }
-function setStatsText(t) { statsEl.textContent = t; }
+function normalizePseudo(p) {
+  return (p || "").trim().toLowerCase();
+}
+function isValidPseudo(p) {
+  return /^[a-z0-9_]{3,25}$/.test(p);
+}
+function setStatsText(t) {
+  statsEl.textContent = t;
+}
 
 async function fetchJson(url, label) {
   const res = await fetch(url, { cache: "no-store" });
@@ -36,7 +38,8 @@ function fitProjectionToFeatures() {
   const x = (b[0][0] + b[1][0]) / 2;
   const y = (b[0][1] + b[1][1]) / 2;
 
-  const w = 1920, h = 1080;
+  const w = 1920,
+    h = 1080;
   const scale = 0.95 / Math.max(dx / w, dy / h);
   const translate = [w / 2 - scale * x, h / 2 - scale * y];
 
@@ -47,16 +50,17 @@ function paint() {
   const globalSet = new Set((state.globalCountries || []).map(String));
 
   const pseudo = normalizePseudo(searchEl.value);
-  const userList = isValidPseudo(pseudo) ? (state.byUser?.[pseudo] || []) : [];
+  const userList = isValidPseudo(pseudo) ? state.byUser?.[pseudo] || [] : [];
   const userSet = new Set(userList.map(String));
 
   userInfoEl.textContent = isValidPseudo(pseudo)
     ? `Pseudo: ${pseudo} • ${userList.length} pays`
     : "Mode: Communauté + Pseudo";
 
-  svg.selectAll("path.country")
-    .classed("visitedGlobal", d => globalSet.has(String(d.id)))
-    .classed("visitedUser",   d => userSet.has(String(d.id)));
+  svg
+    .selectAll("path.country")
+    .classed("visitedGlobal", (d) => globalSet.has(String(d.id)))
+    .classed("visitedUser", (d) => userSet.has(String(d.id)));
 }
 
 async function fetchState() {
@@ -85,16 +89,17 @@ async function boot() {
     fitProjectionToFeatures();
 
     svg.selectAll("*").remove();
-    svg.append("g")
+    svg
+      .append("g")
       .selectAll("path")
       .data(features)
       .join("path")
       .attr("class", "country")
-      .attr("d", d => path(d));
+      .attr("d", (d) => path(d));
 
     paint();
-    setStatsText("Carte OK, lecture API…");
 
+    setStatsText("Carte OK, lecture API…");
     await fetchState();
     setInterval(fetchState, REFRESH_MS);
   } catch (e) {

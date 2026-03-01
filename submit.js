@@ -1,17 +1,7 @@
-// =======================
-// CONFIG
-// =======================
-const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
-
-// TSV actuel 
+const API_URL ="https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 const COUNTRY_TSV_URL = "https://unpkg.com/world-atlas@1.1.4/world/110m.tsv";
+const CLIENT_COOLDOWN_MS = 800;
 
-// Anti-spam côté client (en plus du backend)
-const CLIENT_COOLDOWN_MS = 1500;
-
-// =======================
-// DOM
-// =======================
 const pseudoEl = document.getElementById("pseudo");
 const qEl = document.getElementById("q");
 const selectEl = document.getElementById("countrySelect");
@@ -19,7 +9,7 @@ const statusEl = document.getElementById("status");
 const addBtn = document.getElementById("addBtn");
 const removeBtn = document.getElementById("removeBtn");
 
-let allCountries = [];        // [{id:"250", name:"France", iso2:"FR"}...]
+let allCountries = [];
 let filteredCountries = [];
 let lastClientSendTs = 0;
 
@@ -31,9 +21,38 @@ function setStatus(msg, kind = "") {
 function normalizePseudo(p) {
   return (p || "").trim().toLowerCase();
 }
-
 function isValidPseudo(p) {
   return /^[a-z0-9_]{3,25}$/.test(p);
+}
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = "cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("JSONP timeout"));
+    }, 12000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+    }
+
+    window[cbName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("JSONP load error"));
+    };
+
+    script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cbName;
+    document.head.appendChild(script);
+  });
 }
 
 async function fetchText(url) {
@@ -42,44 +61,32 @@ async function fetchText(url) {
   return await res.text();
 }
 
-/**
- * TSV header has: ... name ... iso_a2 ... iso_n3 ...
- * We'll use:
- *  - numeric countryId = iso_n3
- *  - display name = name
- *  - optional iso2 = iso_a2 (for display only)
- */
 function parseTSV(tsvText) {
   const lines = tsvText.split(/\r?\n/).filter(Boolean);
-  const header = lines[0].split("\t").map(h => h.trim().toLowerCase());
+  const header = lines[0].split("\t").map((h) => h.trim().toLowerCase());
 
   const idxName = header.indexOf("name");
   const idxIsoN3 = header.indexOf("iso_n3");
   const idxIsoA2 = header.indexOf("iso_a2");
 
   if (idxName < 0 || idxIsoN3 < 0) {
-    throw new Error(
-      `TSV invalide: colonnes name/iso_n3 introuvables (header: ${header.join(",")})`
-    );
+    throw new Error(`TSV invalide: colonnes name/iso_n3 introuvables`);
   }
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split("\t");
-
     const name = (cols[idxName] || "").trim();
-    const isoN3 = (cols[idxIsoN3] || "").trim(); // numeric id as string
-    const iso2 = idxIsoA2 >= 0 ? (cols[idxIsoA2] || "").trim().toUpperCase() : "";
+    const isoN3 = (cols[idxIsoN3] || "").trim();
+    const iso2 =
+      idxIsoA2 >= 0 ? (cols[idxIsoA2] || "").trim().toUpperCase() : "";
 
     if (!name) continue;
-
-    // iso_n3 parfois vide pour certains "unités" → on ignore
     if (!isoN3 || !/^\d{1,4}$/.test(isoN3)) continue;
 
     rows.push({ id: isoN3, name, iso2 });
   }
 
-  // Dedup by id
   const seen = new Set();
   const uniq = [];
   for (const r of rows) {
@@ -88,8 +95,9 @@ function parseTSV(tsvText) {
     uniq.push(r);
   }
 
-  // Sort alpha
-  uniq.sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+  uniq.sort((a, b) =>
+    a.name.localeCompare(b.name, "fr", { sensitivity: "base" }),
+  );
   return uniq;
 }
 
@@ -97,8 +105,10 @@ function renderSelect(list) {
   selectEl.innerHTML = "";
   for (const c of list) {
     const opt = document.createElement("option");
-    opt.value = c.id; // countryId numeric
-    opt.textContent = c.iso2 ? `${c.name} (${c.iso2}, ${c.id})` : `${c.name} (${c.id})`;
+    opt.value = c.id;
+    opt.textContent = c.iso2
+      ? `${c.name} (${c.iso2}, ${c.id})`
+      : `${c.name} (${c.id})`;
     selectEl.appendChild(opt);
   }
   if (selectEl.options.length > 0) selectEl.selectedIndex = 0;
@@ -106,14 +116,14 @@ function renderSelect(list) {
 
 function applyFilter() {
   const q = (qEl.value || "").trim().toLowerCase();
-  if (!q) {
-    filteredCountries = allCountries.slice(0, 250);
-  } else {
+  if (!q) filteredCountries = allCountries.slice(0, 250);
+  else {
     filteredCountries = allCountries
-      .filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.id.includes(q) ||
-        (c.iso2 || "").toLowerCase().includes(q)
+      .filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.id.includes(q) ||
+          (c.iso2 || "").toLowerCase().includes(q),
       )
       .slice(0, 250);
   }
@@ -127,7 +137,7 @@ function getSelectedCountryId() {
 async function sendUpdate(action) {
   const now = Date.now();
   if (now - lastClientSendTs < CLIENT_COOLDOWN_MS) {
-    setStatus("Trop rapide 🙂 attends 1–2 secondes.", "err");
+    setStatus("Trop rapide 🙂 attends un instant.", "err");
     return;
   }
 
@@ -146,30 +156,32 @@ async function sendUpdate(action) {
   lastClientSendTs = now;
   setStatus("Envoi…");
 
-  try {
-    const res = await fetch(`${API_URL}?route=update`, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ pseudo, countryId, action })
-    });
+  const url =
+    `${API_URL}?route=updateGet` +
+    `&pseudo=${encodeURIComponent(pseudo)}` +
+    `&countryId=${encodeURIComponent(countryId)}` +
+    `&action=${encodeURIComponent(action)}`;
 
-    const data = await res.json();
+  try {
+    const data = await jsonp(url);
+
     if (!data.ok) {
-      if (data.error === "RATE_LIMIT") {
-        setStatus(`Rate-limit 🙂 réessaie dans ${data.retryAfterSec || 1}s.`, "err");
-      } else if (data.error === "LOCKED") {
+      if (data.error === "RATE_LIMIT")
+        setStatus(
+          `Rate-limit 🙂 réessaie dans ${data.retryAfterSec || 1}s.`,
+          "err",
+        );
+      else if (data.error === "LOCKED")
         setStatus("Contributions fermées (LOCK).", "err");
-      } else if (data.error === "BANNED") {
-        setStatus("Pseudo bloqué.", "err");
-      } else {
-        setStatus(`Erreur: ${data.error || "UNKNOWN"}`, "err");
-      }
+      else if (data.error === "BANNED") setStatus("Pseudo bloqué.", "err");
+      else setStatus(`Erreur: ${data.error || "UNKNOWN"}`, "err");
       return;
     }
 
     setStatus(action === "add" ? "Ajouté ✅" : "Retiré ✅", "ok");
   } catch (e) {
-    setStatus("Erreur réseau / API_URL incorrecte.", "err");
+    console.error(e);
+    setStatus("Erreur réseau (JSONP).", "err");
   }
 }
 
@@ -182,7 +194,7 @@ async function init() {
     setStatus(`Pays chargés: ${allCountries.length}.`, "ok");
   } catch (e) {
     console.error(e);
-    setStatus(`Impossible de charger la liste des pays: ${e.message}`, "err");
+    setStatus(`Impossible de charger les pays: ${e.message}`, "err");
   }
 }
 
@@ -190,7 +202,6 @@ qEl.addEventListener("input", applyFilter);
 addBtn.addEventListener("click", () => sendUpdate("add"));
 removeBtn.addEventListener("click", () => sendUpdate("remove"));
 
-// Bonus UX : Entrée = Ajouter, Shift+Entrée = Retirer
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Enter") {
     ev.preventDefault();
