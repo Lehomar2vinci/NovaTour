@@ -1,24 +1,25 @@
-// overlay.js
-function getApiUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const fromQuery = params.get("api");
-  if (fromQuery) {
-    localStorage.setItem("api_url", fromQuery);
-    return fromQuery;
-  }
-  return localStorage.getItem("api_url") || "";
-}
-
 const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
+
+// Sources carte (gratuits)
+const WORLD_ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+// Refresh overlay
 const REFRESH_MS = 7000;
 
+// DOM
+const svg = d3.select("#map");
 const statsEl = document.getElementById("stats");
 const searchEl = document.getElementById("search");
 const userInfoEl = document.getElementById("userInfo");
-const svgObj = document.getElementById("svgObj");
 
 let state = { globalCountries: [], byUser: {}, updatedAt: 0 };
-let svgDoc = null;
+
+// Projection (Mercator)
+const projection = d3.geoMercator()
+  .scale(300)
+  .translate([960, 580]);
+
+const path = d3.geoPath(projection);
 
 function normalizePseudo(p) { return (p || "").trim().toLowerCase(); }
 function isValidPseudo(p) { return /^[a-z0-9_]{3,25}$/.test(p); }
@@ -29,78 +30,91 @@ function setStats() {
   statsEl.textContent = `Commune: ${globalCount} pays • ${userCount} viewers`;
 }
 
-function clearClasses() {
-  if (!svgDoc) return;
-  svgDoc.querySelectorAll(".country").forEach(n => {
-    n.classList.remove("visitedGlobal");
-    n.classList.remove("visitedUser");
-  });
-}
-
-function applyGlobal() {
-  if (!svgDoc) return;
-  for (const code of state.globalCountries || []) {
-    const el = svgDoc.getElementById(code);
-    if (el) el.classList.add("visitedGlobal");
+function setUserInfo(pseudo) {
+  if (!pseudo) {
+    userInfoEl.textContent = "Mode: Communauté + Pseudo";
+    return;
   }
-}
-
-function applyUser(pseudo) {
-  if (!svgDoc) return;
-  const countries = (state.byUser && state.byUser[pseudo]) ? state.byUser[pseudo] : [];
-  for (const code of countries) {
-    const el = svgDoc.getElementById(code);
-    if (el) el.classList.add("visitedUser");
-  }
-  if (pseudo && isValidPseudo(pseudo)) {
-    userInfoEl.textContent = countries.length
-      ? `Pseudo: ${pseudo} • ${countries.length} pays`
-      : `Pseudo: ${pseudo} • 0 pays (ou inconnu)`;
-  } else {
-    userInfoEl.textContent = `Mode: Communauté + Pseudo`;
-  }
-}
-
-function render() {
-  clearClasses();
-  applyGlobal();
-  const p = normalizePseudo(searchEl.value);
-  if (isValidPseudo(p)) applyUser(p);
-  else applyUser("");
+  const arr = (state.byUser && state.byUser[pseudo]) ? state.byUser[pseudo] : [];
+  userInfoEl.textContent = `Pseudo: ${pseudo} • ${arr.length} pays`;
 }
 
 async function fetchState() {
-  if (!API_URL) {
-    statsEl.textContent = "API non configurée (ajoute ?api=.../exec).";
-    return;
-  }
   try {
     const res = await fetch(`${API_URL}?route=state`, { cache: "no-store" });
     const data = await res.json();
     if (data && data.ok) {
       state = data;
       setStats();
-      render();
+      paint();
     } else {
       statsEl.textContent = "Erreur state.";
     }
   } catch (e) {
-    statsEl.textContent = "Erreur réseau / URL API incorrecte.";
+    statsEl.textContent = "Erreur réseau / API_URL.";
   }
 }
 
-svgObj.addEventListener("load", () => {
-  svgDoc = svgObj.contentDocument;
-  if (!svgDoc) return;
+/**
+ * IMPORTANT:
+ * World-atlas "countries-110m" contient des pays en TopoJSON,
+ * mais n’expose pas directement ISO2. Il utilise des IDs numériques (Natural Earth).
+ * Donc pour colorier "FR/JP/US" il faut une table de correspondance ID->ISO.
+ *
+ * Pour rester simple, on va fonctionner en mode "global count + affichage carte"
+ * (carte visible), et on ajoutera la coloration ISO2 dans l’étape suivante via un
+ * mapping (je te le fournis ensuite).
+ */
+let features = [];
 
-  // Ajoute class country aux éléments id=ISO2/ISO3
-  svgDoc.querySelectorAll("[id]").forEach(el => {
-    if (/^[A-Z]{2,3}$/.test(el.id)) el.classList.add("country");
-  });
+async function loadMap() {
+  const topo = await fetch(WORLD_ATLAS_URL).then(r => r.json());
+  features = topojson.feature(topo, topo.objects.countries).features;
 
-  fetchState();
+  // Dessin initial
+  svg.append("g")
+    .attr("id", "countries")
+    .selectAll("path")
+    .data(features)
+    .join("path")
+    .attr("class", "country")
+    .attr("d", path);
+
+  // Positionnement propre
+  // (Optionnel) ajuster la projection automatiquement:
+  fitProjection();
+
+  // Premier fetch + interval
+  await fetchState();
   setInterval(fetchState, REFRESH_MS);
-  render();
-});
+}
 
-searchEl.addEventListener("input", () => render());
+function fitProjection() {
+  // Fit to SVG
+  const bounds = d3.geoBounds({ type: "FeatureCollection", features });
+  const dx = bounds[1][0] - bounds[0][0];
+  const dy = bounds[1][1] - bounds[0][1];
+  const x = (bounds[0][0] + bounds[1][0]) / 2;
+  const y = (bounds[0][1] + bounds[1][1]) / 2;
+
+  const scale = 0.90 / Math.max(dx / 1920, dy / 1080);
+  const translate = [1920 / 2 - scale * x, 1080 / 2 - scale * y];
+
+  projection.scale(scale).translate(translate);
+
+  svg.selectAll("path.country").attr("d", path);
+}
+
+function paint() {
+  // Pour l’instant : on montre la carte, et le HUD fonctionne.
+  // La coloration ISO2 demande une table de correspondance.
+  const pseudo = normalizePseudo(searchEl.value);
+  setUserInfo(isValidPseudo(pseudo) ? pseudo : "");
+}
+
+searchEl.addEventListener("input", () => paint());
+
+loadMap().catch(err => {
+  statsEl.textContent = "Erreur chargement carte (CDN).";
+  console.error(err);
+});
