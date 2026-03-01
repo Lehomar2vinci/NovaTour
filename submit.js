@@ -3,7 +3,7 @@
 // =======================
 const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 
-// Pays (noms + id numeric) depuis world-atlas v1.1.4 (TSV présent)
+// TSV actuel 
 const COUNTRY_TSV_URL = "https://unpkg.com/world-atlas@1.1.4/world/110m.tsv";
 
 // Anti-spam côté client (en plus du backend)
@@ -19,8 +19,8 @@ const statusEl = document.getElementById("status");
 const addBtn = document.getElementById("addBtn");
 const removeBtn = document.getElementById("removeBtn");
 
-let allCountries = [];     // [{id:"250", name:"France"}, ...]
-let filteredCountries = []; // idem
+let allCountries = [];        // [{id:"250", name:"France", iso2:"FR"}...]
+let filteredCountries = [];
 let lastClientSendTs = 0;
 
 function setStatus(msg, kind = "") {
@@ -36,39 +36,50 @@ function isValidPseudo(p) {
   return /^[a-z0-9_]{3,25}$/.test(p);
 }
 
-function escapeText(s) {
-  return String(s || "").replace(/[<>&]/g, c => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
-}
-
 async function fetchText(url) {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.text();
 }
 
+/**
+ * TSV header has: ... name ... iso_a2 ... iso_n3 ...
+ * We'll use:
+ *  - numeric countryId = iso_n3
+ *  - display name = name
+ *  - optional iso2 = iso_a2 (for display only)
+ */
 function parseTSV(tsvText) {
-  // TSV columns in world-atlas@1.1.4/world/110m.tsv include at least: id, name
-  // We'll be defensive.
   const lines = tsvText.split(/\r?\n/).filter(Boolean);
   const header = lines[0].split("\t").map(h => h.trim().toLowerCase());
-  const idxId = header.indexOf("id");
-  const idxName = header.indexOf("name");
 
-  if (idxId < 0 || idxName < 0) {
-    throw new Error(`TSV invalide: colonnes id/name introuvables (header: ${header.join(",")})`);
+  const idxName = header.indexOf("name");
+  const idxIsoN3 = header.indexOf("iso_n3");
+  const idxIsoA2 = header.indexOf("iso_a2");
+
+  if (idxName < 0 || idxIsoN3 < 0) {
+    throw new Error(
+      `TSV invalide: colonnes name/iso_n3 introuvables (header: ${header.join(",")})`
+    );
   }
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split("\t");
-    const id = (cols[idxId] || "").trim();
+
     const name = (cols[idxName] || "").trim();
-    if (!id || !name) continue;
-    if (!/^\d{1,4}$/.test(id)) continue;
-    rows.push({ id, name });
+    const isoN3 = (cols[idxIsoN3] || "").trim(); // numeric id as string
+    const iso2 = idxIsoA2 >= 0 ? (cols[idxIsoA2] || "").trim().toUpperCase() : "";
+
+    if (!name) continue;
+
+    // iso_n3 parfois vide pour certains "unités" → on ignore
+    if (!isoN3 || !/^\d{1,4}$/.test(isoN3)) continue;
+
+    rows.push({ id: isoN3, name, iso2 });
   }
 
-  // Deduplicate by id
+  // Dedup by id
   const seen = new Set();
   const uniq = [];
   for (const r of rows) {
@@ -77,7 +88,7 @@ function parseTSV(tsvText) {
     uniq.push(r);
   }
 
-  // Sort alphabetical for nicer UX
+  // Sort alpha
   uniq.sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
   return uniq;
 }
@@ -86,29 +97,31 @@ function renderSelect(list) {
   selectEl.innerHTML = "";
   for (const c of list) {
     const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = `${c.name} (${c.id})`;
+    opt.value = c.id; // countryId numeric
+    opt.textContent = c.iso2 ? `${c.name} (${c.iso2}, ${c.id})` : `${c.name} (${c.id})`;
     selectEl.appendChild(opt);
   }
-  // Auto-select first
   if (selectEl.options.length > 0) selectEl.selectedIndex = 0;
 }
 
 function applyFilter() {
   const q = (qEl.value || "").trim().toLowerCase();
   if (!q) {
-    filteredCountries = allCountries.slice(0, 250); // avoid massive select for weak devices
+    filteredCountries = allCountries.slice(0, 250);
   } else {
     filteredCountries = allCountries
-      .filter(c => c.name.toLowerCase().includes(q) || c.id.includes(q))
+      .filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.id.includes(q) ||
+        (c.iso2 || "").toLowerCase().includes(q)
+      )
       .slice(0, 250);
   }
   renderSelect(filteredCountries);
 }
 
 function getSelectedCountryId() {
-  const v = selectEl.value;
-  return (v || "").trim();
+  return (selectEl.value || "").trim();
 }
 
 async function sendUpdate(action) {
@@ -136,7 +149,6 @@ async function sendUpdate(action) {
   try {
     const res = await fetch(`${API_URL}?route=update`, {
       method: "POST",
-      // Apps Script est parfois plus stable avec text/plain
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ pseudo, countryId, action })
     });
@@ -150,7 +162,7 @@ async function sendUpdate(action) {
       } else if (data.error === "BANNED") {
         setStatus("Pseudo bloqué.", "err");
       } else {
-        setStatus(`Erreur: ${escapeText(data.error || "UNKNOWN")}`, "err");
+        setStatus(`Erreur: ${data.error || "UNKNOWN"}`, "err");
       }
       return;
     }
@@ -170,14 +182,21 @@ async function init() {
     setStatus(`Pays chargés: ${allCountries.length}.`, "ok");
   } catch (e) {
     console.error(e);
-    setStatus("Impossible de charger la liste des pays (TSV).", "err");
+    setStatus(`Impossible de charger la liste des pays: ${e.message}`, "err");
   }
 }
 
-// Events
 qEl.addEventListener("input", applyFilter);
 addBtn.addEventListener("click", () => sendUpdate("add"));
 removeBtn.addEventListener("click", () => sendUpdate("remove"));
 
-// Start
+// Bonus UX : Entrée = Ajouter, Shift+Entrée = Retirer
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") {
+    ev.preventDefault();
+    if (ev.shiftKey) sendUpdate("remove");
+    else sendUpdate("add");
+  }
+});
+
 init();
