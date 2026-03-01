@@ -100,3 +100,9 @@ body.overlay {
   stroke: rgba(0,0,0,0.20);
   stroke-width: 1;
 }
+
+.pinTooltipSmall {
+  fill: rgba(0,0,0,0.82);
+  font-size: 12px;
+  font-weight: 600;
+}
