@@ -5,10 +5,14 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NovaTour - Overlay</title>
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Librairies -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+
   <script defer src="overlay.js"></script>
 </head>
+
 <body class="overlay">
   <div class="hud">
     <div class="pill" id="stats">Chargement…</div>
@@ -16,6 +20,6 @@
     <div class="pill muted" id="userInfo">Mode: Communauté + Pseudo</div>
   </div>
 
-  <svg id="map" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet"></svg>
+  <svg id="map" width="1920" height="1080" viewBox="0 0 1920 1080"></svg>
 </body>
 </html>
