@@ -15,7 +15,7 @@ body.overlay {
 }
 
 .pill {
-  background: rgba(255,255,255,0.90);
+  background: rgba(255, 255, 255, 0.90);
   padding: 8px 10px;
   border-radius: 999px;
   font-size: 14px;
@@ -30,20 +30,36 @@ body.overlay {
   padding: 10px;
   width: 260px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.18);
-  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .country {
-  fill: rgba(0,0,0,0.08);
-  stroke: rgba(0,0,0,0.20);
+  fill: rgba(0, 0, 0, 0.08);
+  stroke: rgba(0, 0, 0, 0.20);
   stroke-width: 0.6;
 }
 
 .visitedGlobal {
-  fill: rgba(0,0,0,0.25);
+  fill: rgba(0, 0, 0, 0.25);
 }
+
 .visitedUser {
-  stroke: rgba(0,0,0,0.85);
+  stroke: rgba(0, 0, 0, 0.85);
   stroke-width: 1.6;
+}
+
+/* Pins layer */
+#pins .pin circle {
+  fill: rgba(255, 40, 40, 0.70);
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 1.2;
+}
+
+#pins .pin text {
+  fill: rgba(255, 255, 255, 0.96);
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 2px;
 }

@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NovaTour — Pays visités</title>
+  <title>NovaTour — Pays visités + Pins</title>
   <style>
     :root {
       --bg: #0b0f17;
@@ -223,6 +223,15 @@
       background: rgba(255, 95, 95, 0.22)
     }
 
+    .pinbtn {
+      background: rgba(255, 70, 70, 0.18);
+      border-color: rgba(255, 70, 70, 0.35)
+    }
+
+    .pinbtn:hover {
+      background: rgba(255, 70, 70, 0.26)
+    }
+
     .status {
       margin: 14px 16px 16px;
       padding: 12px;
@@ -268,11 +277,11 @@
   <div class="wrap">
     <header>
       <div class="title">
-        <h1>NovaTour — Pays visités</h1>
+        <h1>NovaTour — Pays visités + Pins</h1>
         <div class="sub">
-          Entre ton pseudo Twitch, cherche un pays, puis clique <span class="kbd">Ajouter</span> ou <span
-            class="kbd">Retirer</span>.
-          Les mises à jour apparaissent sur la carte du stream (overlay).
+          Choisis un pays puis :
+          <span class="kbd">Ajouter</span>/<span class="kbd">Retirer</span> pour “pays visités”,
+          ou <span class="kbd">📍 Ajouter un pin</span> pour mettre un marqueur visible par tous.
         </div>
       </div>
       <div class="badge">100% gratuit • Google Sheets + GitHub Pages</div>
@@ -280,8 +289,8 @@
 
     <div class="card">
       <div class="cardHead">
-        <div class="badge">1 action / ~8s côté serveur (anti-spam)</div>
-        <div class="badge">Astuce : tape “fra” ou “250”</div>
+        <div class="badge">Anti-spam serveur : 1 action / ~8s / pseudo</div>
+        <div class="badge">Astuce : recherche “fra” ou “250”</div>
       </div>
 
       <div class="grid">
@@ -292,14 +301,9 @@
         </div>
 
         <div class="field">
-          <label>Comment ça marche ?</label>
-          <div class="hint"
-            style="padding:12px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.04);line-height:1.5;">
-            • Tu sélectionnes un pays dans la liste.<br />
-            • On enregistre ton choix dans une base Google Sheet.<br />
-            • L’overlay stream met la carte à jour automatiquement.<br />
-            • Si c’est fermé : tu verras <span class="kbd">LOCKED</span>.
-          </div>
+          <label for="pinLabel">Label du pin (optionnel)</label>
+          <input id="pinLabel" placeholder="ex: vacances / roadtrip / 2024…" autocomplete="off" />
+          <div class="hint">Max 40 caractères. Le pin est visible par tout le monde.</div>
         </div>
 
         <div class="field" style="grid-column:1/-1;">
@@ -312,12 +316,12 @@
               <div class="actions">
                 <button id="addBtn" class="primary" type="button">Ajouter</button>
                 <button id="removeBtn" class="danger" type="button">Retirer</button>
+                <button id="pinBtn" class="pinbtn" type="button">📍 Ajouter un pin</button>
               </div>
             </div>
 
             <select id="countrySelect" size="12"></select>
-            <div class="hint">Sélectionne un pays, puis clique Ajouter/Retirer. Entrée = Ajouter, Shift+Entrée =
-              Retirer.</div>
+            <div class="hint">Entrée = Ajouter, Shift+Entrée = Retirer.</div>
           </div>
         </div>
       </div>
@@ -326,8 +330,8 @@
     </div>
 
     <div class="footer">
-      Si tu as <span class="kbd">RATE_LIMIT</span>, attends quelques secondes.
-      Si tu as <span class="kbd">LOCKED</span>, le streamer a fermé les contributions.
+      Si tu vois <span class="kbd">RATE_LIMIT</span>, attends quelques secondes.
+      Si tu vois <span class="kbd">LOCKED</span>, le streamer a fermé les contributions.
     </div>
   </div>
 
