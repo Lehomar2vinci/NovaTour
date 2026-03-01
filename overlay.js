@@ -27,10 +27,23 @@ async function fetchJson(url, label) {
   return await res.json();
 }
 
-function fitProjectionToWorld() {
+// Scene group: tout ce qui doit zoomer/panner ensemble
+let scene, countriesLayer, pinsLayer;
+
+function getSvgSize() {
+  const el = svg.node();
+  const r = el.getBoundingClientRect();
+  return { w: Math.max(1, r.width), h: Math.max(1, r.height) };
+}
+
+function fitProjection() {
+  const { w, h } = getSvgSize();
   const fc = { type: "FeatureCollection", features };
-  // fitSize est le plus stable : calcule scale+translate automatiquement
-  projection.fitSize([1920, 1080], fc);
+  projection.fitSize([w, h], fc);
+  // Recalcul des d (chemins)
+  countriesLayer.selectAll("path.country").attr("d", d => path(d));
+  // Repositionne pins
+  paintPins();
 }
 
 function paintCountries() {
@@ -44,15 +57,16 @@ function paintCountries() {
     ? `Pseudo: ${pseudo} • ${userList.length} pays`
     : "Mode: Communauté + Pseudo";
 
-  svg.selectAll("path.country")
+  countriesLayer.selectAll("path.country")
     .classed("visitedGlobal", d => globalSet.has(String(d.id)))
     .classed("visitedUser",   d => userSet.has(String(d.id)));
 }
 
 function paintPins() {
+  if (!pinsLayer) return;
+
   const pinsByCountry = state.pinsByCountry || {};
   const entries = Object.entries(pinsByCountry); // [ [id, count], ... ]
-
   const byId = new Map(features.map(f => [String(f.id), f]));
 
   const pinsData = entries
@@ -60,15 +74,13 @@ function paintPins() {
       const f = byId.get(String(id));
       if (!f) return null;
       const c = d3.geoCentroid(f);
-      const [x, y] = projection(c);
-      if (!isFinite(x) || !isFinite(y)) return null;
-      return { id: String(id), count: Number(count) || 0, x, y };
+      const xy = projection(c);
+      if (!xy || !isFinite(xy[0]) || !isFinite(xy[1])) return null;
+      return { id: String(id), count: Number(count) || 0, x: xy[0], y: xy[1] };
     })
     .filter(Boolean);
 
-  const layer = svg.select("#pins");
-
-  const sel = layer.selectAll("g.pin")
+  const sel = pinsLayer.selectAll("g.pin")
     .data(pinsData, d => d.id);
 
   const enter = sel.enter().append("g").attr("class", "pin");
@@ -114,36 +126,65 @@ async function fetchState() {
   }
 }
 
+function enableZoom() {
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .on("zoom", (event) => {
+      scene.attr("transform", event.transform);
+    });
+
+  // Appliquer zoom sur le SVG (molette + drag)
+  svg.call(zoom);
+
+  // Double-clic zoom désactivé (optionnel)
+  svg.on("dblclick.zoom", null);
+}
+
 async function boot() {
   try {
     setStatsText("Chargement carte…");
+
+    // Prépare SVG (important pour fitSize)
+    const { w, h } = getSvgSize();
+    svg.attr("viewBox", `0 0 ${w} ${h}`);
+
+    // Charger topojson
     const topo = await fetchJson(WORLD_ATLAS_URL, "world-atlas");
     features = topojson.feature(topo, topo.objects.countries).features;
 
-    fitProjectionToWorld();
-
+    // Nettoyage + layers
     svg.selectAll("*").remove();
+    scene = svg.append("g").attr("id", "scene");
+    countriesLayer = scene.append("g").attr("id", "countries");
+    pinsLayer = scene.append("g").attr("id", "pins");
 
-    // Pays (styles en ATTRIBUTS => visibles même si CSS bug)
-    svg.append("g")
-      .attr("id", "countries")
-      .selectAll("path")
+    // Fit projection au vrai viewport
+    fitProjection();
+
+    // Dessin pays
+    countriesLayer.selectAll("path")
       .data(features)
       .join("path")
       .attr("class", "country")
-      .attr("d", d => path(d))
-      .attr("fill", "rgba(0,0,0,0.08)")
-      .attr("stroke", "rgba(0,0,0,0.22)")
-      .attr("stroke-width", 0.8);
+      .attr("d", d => path(d));
 
-    // Pins layer
-    svg.append("g").attr("id", "pins");
+    // Zoom/pan
+    enableZoom();
 
+    // Initial paint + boucle API
     paint();
     setStatsText("Carte OK, lecture API…");
 
     await fetchState();
     setInterval(fetchState, REFRESH_MS);
+
+    // Refit au resize
+    window.addEventListener("resize", () => {
+      const { w, h } = getSvgSize();
+      svg.attr("viewBox", `0 0 ${w} ${h}`);
+      fitProjection();
+    });
+
   } catch (e) {
     setStatsText(`LOAD ERROR: ${e.message}`);
     console.error(e);
