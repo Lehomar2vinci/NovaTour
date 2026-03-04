@@ -1,6 +1,3 @@
-// =======================
-// CONFIG
-// =======================
 const API_URL =
   "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 
@@ -8,6 +5,14 @@ const WORLD_ATLAS_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 const COUNTRY_TSV_URL = "https://unpkg.com/world-atlas@1.1.4/world/110m.tsv";
 const REFRESH_MS = 5000;
+
+// ===== Pin sizing behaviour =====
+// k = zoom scale. We shrink pins as you zoom in: scalePin = 1 / k^PIN_SHRINK_POWER
+// 0.0 => constant size; 1.0 => fully inverse; 0.6 is a good compromise.
+const PIN_SHRINK_POWER = 0.65;
+// clamp radii
+const PIN_R_MIN = 2.5;
+const PIN_R_MAX = 16;
 
 const svg = d3.select("#map");
 const statsEl = document.getElementById("stats");
@@ -22,7 +27,9 @@ const path = d3.geoPath(projection);
 
 let scene, countriesLayer, pinsLayer;
 let tooltipLocked = false;
+let currentZoomK = 1;
 
+// ===== Utils =====
 function setStatsText(t) {
   statsEl.textContent = t;
 }
@@ -32,6 +39,7 @@ async function fetchJson(url, label) {
   if (!res.ok) throw new Error(`${label} HTTP ${res.status}`);
   return await res.json();
 }
+
 async function fetchText(url, label) {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`${label} HTTP ${res.status}`);
@@ -41,13 +49,6 @@ async function fetchText(url, label) {
 function getSvgSize() {
   const r = svg.node().getBoundingClientRect();
   return { w: Math.max(1, r.width), h: Math.max(1, r.height) };
-}
-
-function fitProjection() {
-  const { w, h } = getSvgSize();
-  projection.fitSize([w, h], { type: "FeatureCollection", features });
-  countriesLayer.selectAll("path.country").attr("d", (d) => path(d));
-  paintPins(); // reposition pins on resize/fit
 }
 
 function escapeHtml(s) {
@@ -94,9 +95,9 @@ async function loadCountryNames() {
   idToCountryName = map;
 }
 
-function buildTooltipHtml(pinDatum) {
-  const lines = pinDatum.recent.length
-    ? pinDatum.recent
+function buildTooltipHtml(d) {
+  const lines = d.recent.length
+    ? d.recent
         .map((p) => {
           const when = p.t ? escapeHtml(p.t) : "";
           return `<div class="m">• <b>${escapeHtml(p.pseudo)}</b> — ${escapeHtml(p.label)}<br/><span style="opacity:.75">${when}</span></div>`;
@@ -104,14 +105,43 @@ function buildTooltipHtml(pinDatum) {
         .join("")
     : `<div class="m">Aucun détail récent.</div>`;
 
-  return `<div class="t">📍 ${escapeHtml(pinDatum.countryName)} — ${pinDatum.count} pin(s)</div>${lines}`;
+  return `<div class="t">📍 ${escapeHtml(d.countryName)} — ${d.count} pin(s)</div>${lines}`;
 }
 
-function paintPins() {
+// ===== Projection fit =====
+function fitProjection() {
+  const { w, h } = getSvgSize();
+  projection.fitSize([w, h], { type: "FeatureCollection", features });
+
+  // update country paths
+  countriesLayer.selectAll("path.country").attr("d", (d) => path(d));
+
+  // reposition pins
+  paintPins(true);
+}
+
+// ===== Pin sizing (depends on zoom) =====
+function pinScaleForZoom(k) {
+  return 1 / Math.pow(Math.max(1e-6, k), PIN_SHRINK_POWER);
+}
+
+function pinRadiusBase(count) {
+  // base radius by count (before zoom scaling)
+  return 5.5 + Math.min(16, Math.sqrt(count) * 2.6);
+}
+
+function pinRadiusFinal(count, k) {
+  const r = pinRadiusBase(count) * pinScaleForZoom(k);
+  return Math.max(PIN_R_MIN, Math.min(PIN_R_MAX, r));
+}
+
+// ===== Paint pins =====
+function paintPins(withAnimation = false) {
   const pinsByCountry = state.pinsByCountry || {};
   const entries = Object.entries(pinsByCountry);
 
   const byId = new Map(features.map((f) => [String(Number(f.id)), f]));
+  const k = currentZoomK;
 
   const pinsData = entries
     .map(([id, count]) => {
@@ -142,37 +172,34 @@ function paintPins() {
   const sel = pinsLayer.selectAll("g.pin").data(pinsData, (d) => d.id);
 
   const enter = sel.enter().append("g").attr("class", "pin");
-  enter.append("circle");
+
+  enter.append("circle").attr("r", 0).attr("opacity", 0);
+
   enter
     .append("text")
     .attr("text-anchor", "middle")
     .attr("dy", 4)
-    .style("font-size", "10px");
+    .style("font-size", "10px")
+    .style("opacity", 0);
 
-  // Position
-  sel.merge(enter).attr("transform", (d) => `translate(${d.x},${d.y})`);
+  // IMPORTANT:
+  // We apply zoom to the whole scene (countries + pins).
+  // To prevent pins from becoming huge on zoom, we apply an inverse scale inside each pin group.
+  // scene scales by k, pin group scales by s=1/k^p => net size shrinks/controls.
+  const scaleInside = pinScaleForZoom(k);
 
-  // Size + count
-  sel
+  const merged = sel
     .merge(enter)
-    .select("circle")
-    .attr("r", (d) => 6 + Math.min(18, Math.sqrt(d.count) * 3));
+    .attr("transform", (d) => `translate(${d.x},${d.y}) scale(${scaleInside})`);
 
-  sel
-    .merge(enter)
-    .select("text")
-    .text((d) => (d.count >= 2 ? String(d.count) : ""));
-
-  // Interactions (hover + click lock)
-  sel
-    .merge(enter)
+  // Interactions: hover shows tooltip; click toggles lock
+  merged
     .on("mouseenter", (event, d) => {
       if (tooltipLocked) return;
       showTooltip(event.clientX, event.clientY, buildTooltipHtml(d));
     })
     .on("mousemove", (event, d) => {
       if (tooltipLocked) return;
-      // Suit la souris
       showTooltip(event.clientX, event.clientY, buildTooltipHtml(d));
     })
     .on("mouseleave", () => {
@@ -180,18 +207,56 @@ function paintPins() {
       hideTooltip();
     })
     .on("click", (event, d) => {
-      // Toggle lock
       tooltipLocked = !tooltipLocked;
-      if (tooltipLocked) {
+      if (tooltipLocked)
         showTooltip(event.clientX, event.clientY, buildTooltipHtml(d));
-      } else {
-        hideTooltip();
-      }
+      else hideTooltip();
     });
 
-  sel.exit().remove();
+  // Update radius + count text with animation
+  const applyUpdate = (s) => {
+    s.select("circle")
+      .attr("r", (d) => pinRadiusFinal(d.count, 1)) // radius computed in "pin local scale space"
+      .attr("opacity", 1);
+
+    s.select("text")
+      .text((d) => (d.count >= 2 ? String(d.count) : ""))
+      .style("opacity", (d) => (d.count >= 2 ? 1 : 0));
+  };
+
+  if (withAnimation) {
+    // Enter "pop" animation and smooth updates
+    enter
+      .select("circle")
+      .transition()
+      .duration(320)
+      .ease(d3.easeBackOut)
+      .attr("opacity", 1)
+      .attr("r", (d) => pinRadiusFinal(d.count, 1));
+
+    enter
+      .select("text")
+      .transition()
+      .duration(250)
+      .style("opacity", (d) => (d.count >= 2 ? 1 : 0));
+
+    sel
+      .select("circle")
+      .transition()
+      .duration(250)
+      .attr("r", (d) => pinRadiusFinal(d.count, 1));
+  } else {
+    applyUpdate(merged);
+  }
+
+  sel.exit().transition().duration(200).style("opacity", 0).remove();
+
+  // NOTE:
+  // We keep radius calculation in local (post-scale) space: radiusFinal(count,1).
+  // The size adjustment relative to zoom is handled by the group scale(scaleInside).
 }
 
+// ===== Fetch state =====
 async function fetchState() {
   try {
     const data = await fetchJson(`${API_URL}?route=state`, "API state");
@@ -205,7 +270,7 @@ async function fetchState() {
       );
       setStatsText(`OK • ${p} pays pinnés • ${totalPins} pins`);
 
-      paintPins();
+      paintPins(true);
     } else {
       setStatsText("API state: ok=false");
     }
@@ -214,15 +279,27 @@ async function fetchState() {
   }
 }
 
+// ===== Zoom =====
 function enableZoom() {
   const zoom = d3
     .zoom()
-    .scaleExtent([1, 8])
-    .on("zoom", (event) => scene.attr("transform", event.transform));
+    .scaleExtent([1, 12])
+    .on("zoom", (event) => {
+      scene.attr("transform", event.transform);
+      currentZoomK = event.transform.k;
+
+      // Update pin inner scale to shrink with zoom smoothly
+      const s = pinScaleForZoom(currentZoomK);
+      pinsLayer
+        .selectAll("g.pin")
+        .attr("transform", (d) => `translate(${d.x},${d.y}) scale(${s})`);
+    });
+
   svg.call(zoom);
   svg.on("dblclick.zoom", null);
 }
 
+// ===== Boot =====
 async function boot() {
   try {
     setStatsText("Chargement carte…");
@@ -251,7 +328,7 @@ async function boot() {
 
     enableZoom();
 
-    // Click hors pin = si tooltip locké, déverrouille + cache
+    // Click hors pin = unlock + hide
     window.addEventListener("click", (ev) => {
       if (ev.target.closest && ev.target.closest(".pin")) return;
       tooltipLocked = false;
