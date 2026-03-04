@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -14,12 +15,14 @@
   <div class="hud">
     <div class="pill" id="stats">Chargement…</div>
     <input id="search" class="search" placeholder="pseudo (ex: viewer123)" autocomplete="off" />
-    <div class="pill muted" id="userInfo">Mode: Communauté + Pseudo</div>
+    <div class="pill muted" id="userInfo">Pins publics</div>
     <div class="pill muted">Zoom: molette • Déplacer: drag</div>
-    <footer>Par Lehomar2vinci - 2026</footer>
   </div>
 
-  <!-- SVG plein écran -->
   <svg id="map"></svg>
+
+  <!-- tooltip -->
+  <div id="tooltip" class="tooltip" style="display:none;"></div>
 </body>
+
 </html>

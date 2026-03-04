@@ -6,7 +6,6 @@ body.overlay {
   overflow: hidden;
 }
 
-/* SVG plein écran */
 #map {
   position: fixed;
   inset: 0;
@@ -15,7 +14,6 @@ body.overlay {
   display: block;
 }
 
-/* HUD au-dessus */
 .hud {
   position: fixed;
   top: 16px;
@@ -28,81 +26,72 @@ body.overlay {
 }
 
 .pill {
-  background: rgba(255,255,255,0.90);
+  background: rgba(255, 255, 255, 0.90);
   padding: 8px 10px;
   border-radius: 999px;
   font-size: 14px;
 }
 
-.pill.muted { opacity: 0.9; }
+.pill.muted {
+  opacity: 0.9;
+}
 
 .search {
   font-size: 16px;
   padding: 10px;
   width: 260px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.18);
-  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.92);
 }
 
-/* Pays */
 .country {
-  fill: rgba(0,0,0,0.08);
-  stroke: rgba(0,0,0,0.22);
+  fill: rgba(0, 0, 0, 0.08);
+  stroke: rgba(0, 0, 0, 0.22);
   stroke-width: 0.8;
 }
 
-.visitedGlobal {
-  fill: rgba(0,0,0,0.25);
+/* Pins cliquables */
+.pin {
+  cursor: pointer;
 }
 
-.visitedUser {
-  stroke: rgba(0,0,0,0.85);
-  stroke-width: 1.6;
-}
-
-/* Pins */
 .pin circle {
   fill: rgba(255, 40, 40, 0.70);
-  stroke: rgba(255,255,255,0.92);
+  stroke: rgba(255, 255, 255, 0.92);
   stroke-width: 1.2;
 }
 
 .pin text {
-  fill: rgba(255,255,255,0.96);
+  fill: rgba(255, 255, 255, 0.96);
   font-weight: 800;
   paint-order: stroke;
-  stroke: rgba(0,0,0,0.35);
+  stroke: rgba(0, 0, 0, 0.35);
   stroke-width: 2px;
 }
 
-/* Pin sélectionné */
-.pin.selected circle {
-  stroke: rgba(0,0,0,0.75);
-  stroke-width: 2.5;
-}
-
 /* Tooltip */
-.pinTooltipBox {
-  fill: rgba(255,255,255,0.92);
-  stroke: rgba(0,0,0,0.20);
-  stroke-width: 1;
+.tooltip {
+  position: fixed;
+  z-index: 20;
+  max-width: 340px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 18, 25, 0.92);
+  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+  /* ne bloque pas la souris */
 }
 
-.pinTooltipText {
-  fill: rgba(0,0,0,0.88);
-  font-size: 14px;
-  font-weight: 650;
+.tooltip .t {
+  font-weight: 800;
+  margin-bottom: 6px;
 }
 
-.pinTooltipStem {
-  fill: rgba(255,255,255,0.92);
-  stroke: rgba(0,0,0,0.20);
-  stroke-width: 1;
-}
-
-.pinTooltipSmall {
-  fill: rgba(0,0,0,0.82);
-  font-size: 12px;
-  font-weight: 600;
+.tooltip .m {
+  opacity: 0.92;
 }
