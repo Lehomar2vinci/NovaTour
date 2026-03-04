@@ -1,4 +1,5 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 const COUNTRY_TSV_URL = "https://unpkg.com/world-atlas@1.1.4/world/110m.tsv";
 
 const pseudoEl = document.getElementById("pseudo");
@@ -34,7 +35,9 @@ function jsonp(url) {
 
     function cleanup() {
       clearTimeout(timeout);
-      delete window[cbName];
+      try {
+        delete window[cbName];
+      } catch {}
       script.remove();
     }
 
@@ -79,9 +82,8 @@ function parseTSV(tsvText) {
     if (!name) continue;
     if (!id || !/^\d{1,4}$/.test(id)) continue;
 
-    // ✅ Normalise "004" -> "4"
+    // normalise "004" -> "4"
     id = String(Number(id));
-
     rows.push({ id, name, iso2 });
   }
 
@@ -145,18 +147,21 @@ async function placePin() {
   }
 
   let label = (pinLabelEl.value || "").trim();
-  if (!label) label = pseudo;
+  if (!label) label = pseudo; // obligatoire
 
-  setStatus("Placement du pin…");
-
+  // encodeURIComponent gère accents/espaces
   const url =
     `${API_URL}?route=pinAddGet` +
     `&pseudo=${encodeURIComponent(pseudo)}` +
     `&countryId=${encodeURIComponent(countryId)}` +
     `&label=${encodeURIComponent(label)}`;
 
+  console.log("PIN URL:", url); // <-- debug
+  setStatus("Placement du pin…");
+
   try {
     const data = await jsonp(url);
+    console.log("PIN response:", data);
     if (!data.ok) {
       if (data.error === "RATE_LIMIT")
         setStatus(
@@ -170,7 +175,7 @@ async function placePin() {
     setStatus("Pin placé 📍 (visible sur l’overlay)", "ok");
   } catch (e) {
     console.error(e);
-    setStatus("Erreur réseau (JSONP).", "err");
+    setStatus(`Erreur réseau (JSONP): ${e.message}`, "err");
   }
 }
 
