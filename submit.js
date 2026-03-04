@@ -1,5 +1,4 @@
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
+const API_URL = "PUT_YOUR_APPS_SCRIPT_WEBAPP_URL_HERE";
 const COUNTRY_TSV_URL = "https://unpkg.com/world-atlas@1.1.4/world/110m.tsv";
 
 const pseudoEl = document.getElementById("pseudo");
@@ -73,15 +72,19 @@ function parseTSV(tsvText) {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split("\t");
     const name = (cols[idxName] || "").trim();
-    const id = (cols[idxIsoN3] || "").trim();
+    let id = (cols[idxIsoN3] || "").trim();
     const iso2 =
       idxIsoA2 >= 0 ? (cols[idxIsoA2] || "").trim().toUpperCase() : "";
+
     if (!name) continue;
     if (!id || !/^\d{1,4}$/.test(id)) continue;
+
+    // ✅ Normalise "004" -> "4"
+    id = String(Number(id));
+
     rows.push({ id, name, iso2 });
   }
 
-  // uniq by id
   const seen = new Set();
   const uniq = [];
   for (const r of rows) {
@@ -142,7 +145,7 @@ async function placePin() {
   }
 
   let label = (pinLabelEl.value || "").trim();
-  if (!label) label = pseudo; // obligatoire
+  if (!label) label = pseudo;
 
   setStatus("Placement du pin…");
 

@@ -36,22 +36,12 @@ body.overlay {
   opacity: 0.9;
 }
 
-.search {
-  font-size: 16px;
-  padding: 10px;
-  width: 260px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.92);
-}
-
 .country {
   fill: rgba(0, 0, 0, 0.08);
   stroke: rgba(0, 0, 0, 0.22);
   stroke-width: 0.8;
 }
 
-/* Pins cliquables */
 .pin {
   cursor: pointer;
 }
@@ -70,11 +60,10 @@ body.overlay {
   stroke-width: 2px;
 }
 
-/* Tooltip */
 .tooltip {
   position: fixed;
   z-index: 20;
-  max-width: 340px;
+  max-width: 360px;
   padding: 10px 12px;
   border-radius: 12px;
   background: rgba(15, 18, 25, 0.92);
@@ -84,7 +73,6 @@ body.overlay {
   font-size: 13px;
   line-height: 1.35;
   pointer-events: none;
-  /* ne bloque pas la souris */
 }
 
 .tooltip .t {

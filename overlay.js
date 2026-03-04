@@ -9,8 +9,6 @@ const REFRESH_MS = 7000;
 
 const svg = d3.select("#map");
 const statsEl = document.getElementById("stats");
-const searchEl = document.getElementById("search");
-const userInfoEl = document.getElementById("userInfo");
 const tooltip = document.getElementById("tooltip");
 
 let state = { pinsByCountry: {}, recentPins: [], updatedAt: 0 };
@@ -38,8 +36,7 @@ function getSvgSize() {
 
 function fitProjection() {
   const { w, h } = getSvgSize();
-  const fc = { type: "FeatureCollection", features };
-  projection.fitSize([w, h], fc);
+  projection.fitSize([w, h], { type: "FeatureCollection", features });
   countriesLayer.selectAll("path.country").attr("d", (d) => path(d));
   paintPins();
 }
@@ -50,36 +47,47 @@ function hideTooltip() {
 function showTooltip(x, y, html) {
   tooltip.innerHTML = html;
   tooltip.style.display = "block";
-  tooltip.style.left = `${Math.min(window.innerWidth - 360, x + 12)}px`;
-  tooltip.style.top = `${Math.min(window.innerHeight - 140, y + 12)}px`;
+  tooltip.style.left = `${Math.min(window.innerWidth - 380, x + 12)}px`;
+  tooltip.style.top = `${Math.min(window.innerHeight - 160, y + 12)}px`;
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[c],
+  );
 }
 
 function paintPins() {
   const pinsByCountry = state.pinsByCountry || {};
-  const entries = Object.entries(pinsByCountry); // [ [id, count], ... ]
-  const byId = new Map(features.map((f) => [String(f.id), f]));
+  const entries = Object.entries(pinsByCountry);
+
+  // ✅ Normalise map keys: feature.id may be numeric; use Number->String
+  const byId = new Map(features.map((f) => [String(Number(f.id)), f]));
 
   const pinsData = entries
     .map(([id, count]) => {
-      const f = byId.get(String(id));
+      const key = String(Number(id)); // "004" -> "4"
+      const f = byId.get(key);
       if (!f) return null;
+
       const c = d3.geoCentroid(f);
       const xy = projection(c);
       if (!xy || !isFinite(xy[0]) || !isFinite(xy[1])) return null;
 
-      // derniers pins de ce pays (depuis recentPins)
       const recent = (state.recentPins || [])
-        .filter((p) => String(p.country) === String(id))
-        .slice(-8)
+        .filter((p) => String(Number(p.country)) === key)
+        .slice(-10)
         .reverse();
 
-      return {
-        id: String(id),
-        count: Number(count) || 0,
-        x: xy[0],
-        y: xy[1],
-        recent,
-      };
+      return { id: key, count: Number(count) || 0, x: xy[0], y: xy[1], recent };
     })
     .filter(Boolean);
 
@@ -99,17 +107,17 @@ function paintPins() {
     .on("click", (event, d) => {
       const lines = d.recent.length
         ? d.recent
-            .map(
-              (p) =>
-                `<div class="m">• <b>${escapeHtml(p.pseudo)}</b> — ${escapeHtml(p.label || "")}</div>`,
-            )
+            .map((p) => {
+              const when = p.t ? escapeHtml(p.t) : "";
+              return `<div class="m">• <b>${escapeHtml(p.pseudo)}</b> — ${escapeHtml(p.label)}<br/><span style="opacity:.75">${when}</span></div>`;
+            })
             .join("")
         : `<div class="m">Aucun détail récent.</div>`;
 
       showTooltip(
         event.clientX,
         event.clientY,
-        `<div class="t">📍 Pays ID ${d.id} — ${d.count} pin(s)</div>${lines}`,
+        `<div class="t">📍 Pays ID ${escapeHtml(d.id)} — ${d.count} pin(s)</div>${lines}`,
       );
     });
 
@@ -126,26 +134,11 @@ function paintPins() {
   sel.exit().remove();
 }
 
-function escapeHtml(s) {
-  return String(s || "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      })[c],
-  );
-}
-
 async function fetchState() {
   try {
     const data = await fetchJson(`${API_URL}?route=state`, "API state");
     if (data?.ok) {
       state = data;
-      paintPins();
 
       const p = Object.keys(state.pinsByCountry || {}).length;
       const totalPins = Object.values(state.pinsByCountry || {}).reduce(
@@ -153,6 +146,8 @@ async function fetchState() {
         0,
       );
       setStatsText(`OK • ${p} pays pinnés • ${totalPins} pins`);
+
+      paintPins();
     } else {
       setStatsText("API state: ok=false");
     }
@@ -196,10 +191,7 @@ async function boot() {
 
     enableZoom();
 
-    // click ailleurs = hide tooltip
     window.addEventListener("click", (ev) => {
-      // si click sur pin, l'event est déjà géré
-      // sinon on cache
       if (!ev.target.closest || !ev.target.closest(".pin")) hideTooltip();
     });
 
