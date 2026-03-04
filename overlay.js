@@ -149,8 +149,14 @@ function paintPins(withAnimation = false) {
       const f = byId.get(key);
       if (!f) return null;
 
-      const c = d3.geoCentroid(f);
-      const xy = projection(c);
+      // Meilleur point "visuel" dans la projection
+      let xy = path.centroid(f);
+
+      // Fallback si NaN
+      if (!xy || !isFinite(xy[0]) || !isFinite(xy[1])) {
+        const c = d3.geoCentroid(f);
+        xy = projection(c);
+      }
       if (!xy || !isFinite(xy[0]) || !isFinite(xy[1])) return null;
 
       const recent = (state.recentPins || [])
@@ -166,7 +172,7 @@ function paintPins(withAnimation = false) {
         y: xy[1],
         recent,
       };
-    })
+    };)
     .filter(Boolean);
 
   const sel = pinsLayer.selectAll("g.pin").data(pinsData, (d) => d.id);
