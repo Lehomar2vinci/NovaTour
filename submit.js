@@ -1,4 +1,4 @@
-const API_URL = "PUT_YOUR_APPS_SCRIPT_WEBAPP_URL_HERE";
+const API_URL = "https://script.google.com/macros/s/AKfycbzQTDDOX-KYHfHDNpLYDRlBDxaFPb7SjsAPiMzEWl3l3JMQXdQ8agk5_jKMlsweLo--wA/exec";
 const COUNTRY_TSV_URL = "https://unpkg.com/world-atlas@1.1.4/world/110m.tsv";
 
 const pseudoEl = document.getElementById("pseudo");
